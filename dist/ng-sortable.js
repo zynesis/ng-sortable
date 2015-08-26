@@ -595,7 +595,7 @@
               }
             }
           });
-          
+
           scope.$on('$destroy', function () {
             angular.element($document[0].body).unbind('keydown', escapeListen);
           });
@@ -1093,3 +1093,44 @@
 }());
 
 
+(function () {
+
+  'use strict';
+  var mainModule = angular.module('as.sortable');
+
+  /**
+   * Controller for Unsorted.
+   * @param $scope - the non-sortable scope.
+   */
+  mainModule.controller('as.sortable.unsortedController', ['$scope', function ($scope) {
+
+    this.scope = $scope;
+
+    $scope.modelValue = null; // non-sortable list.
+    $scope.type = 'unsorted';
+    $scope.options = {};
+    $scope.isDisabled = true;
+
+  }]);
+
+  /**
+   * non-sortable directive - defines callbacks.
+   * Sets modelValue, callbacks, element in scope.
+   */
+  mainModule.directive('asUnsorted',
+    function () {
+      return {
+        restrict: 'A',
+        scope: true,
+        controller: 'as.sortable.unsortedController',
+        link: function (scope, element, attrs) {
+
+          //set the element in scope to be accessed by its sub scope.
+          scope.element = element;
+          element.data('_scope',scope);
+
+        }
+      };
+    });
+
+}());
