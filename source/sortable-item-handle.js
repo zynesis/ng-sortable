@@ -19,6 +19,19 @@
     $scope.type = 'handle';
   }]);
 
+  //Check if a node is parent to another node
+  function isParent(possibleParent, elem) {
+    if(!elem || elem.nodeName === 'HTML') {
+      return false;
+    }
+
+    if(elem.parentNode === possibleParent) {
+      return true;
+    }
+
+    return isParent(possibleParent, elem.parentNode);
+  }
+
   /**
    * Directive for sortable item handle.
    */
@@ -76,7 +89,7 @@
               }
             }
           });
-          
+
           scope.$on('$destroy', function () {
             angular.element($document[0].body).unbind('keydown', escapeListen);
           });
@@ -126,6 +139,7 @@
             element.bind('mouseup', unbindMoveListen);
             element.bind('touchend', unbindMoveListen);
             element.bind('touchcancel', unbindMoveListen);
+            event.stopPropagation();
           };
 
           /**
@@ -152,6 +166,8 @@
             dragHandled = true;
             event.preventDefault();
             eventObj = $helper.eventObj(event);
+            scope.sortableScope = scope.sortableScope || scope.itemScope.sortableScope; //isolate directive scope issue.
+            scope.callbacks = scope.callbacks || scope.itemScope.callbacks; //isolate directive scope issue.
 
             // (optional) Scrollable container as reference for top & left offset calculations, defaults to Document
             scrollableContainer = angular.element($document[0].querySelector(scope.sortableScope.options.scrollableContainer)).length > 0 ?
@@ -160,6 +176,8 @@
             containment = (scope.sortableScope.options.containment)? $helper.findAncestor(element, scope.sortableScope.options.containment):angular.element($document[0].body);
             //capture mouse move on containment.
             containment.css('cursor', 'move');
+            containment.css('cursor', '-webkit-grabbing');
+            containment.css('cursor', '-moz-grabbing');
             containment.addClass('as-sortable-un-selectable');
 
             // container positioning
@@ -185,10 +203,21 @@
 
             itemPosition = $helper.positionStarted(eventObj, scope.itemScope.element, scrollableContainer);
             //fill the immediate vacuum.
-            scope.itemScope.element.after(placeHolder);
+            if (!scope.itemScope.sortableScope.options.clone) {
+              scope.itemScope.element.after(placeHolder);
+            }
+
             //hidden place element in original position.
             scope.itemScope.element.after(placeElement);
-            dragElement.append(scope.itemScope.element);
+
+            if (scope.itemScope.sortableScope.options.clone) {
+              // clone option is true, so clone the element.
+              dragElement.append(scope.itemScope.element.clone());
+            }
+            else {
+              // Not cloning, so use the original element.
+              dragElement.append(scope.itemScope.element);
+            }
 
             containment.append(dragElement);
             $helper.movePosition(eventObj, dragElement, itemPosition, containment, containerPositioning, scrollableContainer);
@@ -233,8 +262,14 @@
            * @param targetScope the target scope
            */
           function insertBefore(targetElement, targetScope) {
-            targetElement[0].parentNode.insertBefore(placeHolder[0], targetElement[0]);
-            dragItemInfo.moveTo(targetScope.sortableScope, targetScope.index());
+            // Ensure the placeholder is visible in the target (unless it's a table row)
+            if (placeHolder.css('display') !== 'table-row') {
+              placeHolder.css('display', 'block');
+            }
+            if (!targetScope.sortableScope.options.clone) {
+              targetElement[0].parentNode.insertBefore(placeHolder[0], targetElement[0]);
+              dragItemInfo.moveTo(targetScope.sortableScope, targetScope.index());
+            }
           }
 
           /**
@@ -244,8 +279,14 @@
            * @param targetScope the target scope
            */
           function insertAfter(targetElement, targetScope) {
-            targetElement.after(placeHolder);
-            dragItemInfo.moveTo(targetScope.sortableScope, targetScope.index() + 1);
+            // Ensure the placeholder is visible in the target (unless it's a table row)
+            if (placeHolder.css('display') !== 'table-row') {
+              placeHolder.css('display', 'block');
+            }
+            if (!targetScope.sortableScope.options.clone) {
+              targetElement.after(placeHolder);
+              dragItemInfo.moveTo(targetScope.sortableScope, targetScope.index() + 1);
+            }
           }
 
           /**
@@ -269,9 +310,15 @@
               event.preventDefault();
 
               eventObj = $helper.eventObj(event);
-              scope.sortableScope.$apply(function () {
-                scope.callbacks.dragMove(itemPosition, containment, eventObj);
-              });
+
+              // checking if dragMove callback exists, to prevent application
+              // rerenderings on each mouse move event
+              if (scope.callbacks.dragMove !== angular.noop) {
+                scope.sortableScope.$apply(function () {
+                  scope.callbacks.dragMove(itemPosition, containment, eventObj);
+                });
+              }
+
               $helper.movePosition(eventObj, dragElement, itemPosition, containment, containerPositioning, scrollableContainer);
 
               targetX = eventObj.pageX - $document[0].documentElement.scrollLeft;
@@ -316,9 +363,9 @@
 
               if (targetScope.type === 'sortable') {//sortable scope.
                 if (targetScope.accept(scope, targetScope) &&
-                  targetElement[0].parentNode !== targetScope.element[0]) {
+                  !isParent(targetScope.element[0], targetElement[0])) {
                   //moving over sortable bucket. not over item.
-                  if (!isPlaceHolderPresent(targetElement)) {
+                  if (!isPlaceHolderPresent(targetElement) && !targetScope.options.clone) {
                     targetElement[0].appendChild(placeHolder[0]);
                     dragItemInfo.moveTo(targetScope, targetScope.modelValue.length);
                   }

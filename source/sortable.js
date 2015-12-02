@@ -27,7 +27,11 @@
      * @param itemData - the item model data.
      */
     $scope.insertItem = function (index, itemData) {
-      $scope.modelValue.splice(index, 0, itemData);
+      if ($scope.options.allowDuplicates) {
+        $scope.modelValue.splice(index, 0, angular.copy(itemData));
+      } else {
+        $scope.modelValue.splice(index, 0, itemData);
+      }
     };
 
     /**
@@ -142,8 +146,7 @@
            * @param containment - the containment element.
            * @param eventObj - the event object.
           */
-          callbacks.dragMove = function (itemPosition, containment, eventObj) {
-          };
+          callbacks.dragMove = angular.noop;
 
           /**
            * Invoked when the drag cancelled.
