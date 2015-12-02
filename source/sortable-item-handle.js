@@ -408,7 +408,12 @@
             for (i = 0; i < itemElements.length; i += 1) {
               //TODO may not be accurate when elements contain other siblings than item elements
               //solve by adding 1 to model index of previous item element
-              if (angular.element(itemElements[i]).hasClass(sortableConfig.placeHolderClass)) {
+              if (angular.element(itemElements[i]).attr(sortableConfig.childTarget)) {
+                var childElement = angular.element(itemElements[i]).attr(sortableConfig.childTarget);
+                if (angular.element(itemElements[i]).children(childElement)) {
+                  return i;
+                }
+              } else if (angular.element(itemElements[i]).hasClass(sortableConfig.placeHolderClass)) {
                 return i;
               }
             }

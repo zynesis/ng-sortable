@@ -35,7 +35,8 @@
       placeHolderClass: 'as-sortable-placeholder',
       dragClass: 'as-sortable-drag',
       hiddenClass: 'as-sortable-hidden',
-      dragging: 'as-sortable-dragging'
+      dragging: 'as-sortable-dragging',
+      childTarget: 'as-sortable-child-target'
     });
 }());
 
@@ -939,7 +940,12 @@
             for (i = 0; i < itemElements.length; i += 1) {
               //TODO may not be accurate when elements contain other siblings than item elements
               //solve by adding 1 to model index of previous item element
-              if (angular.element(itemElements[i]).hasClass(sortableConfig.placeHolderClass)) {
+              if (angular.element(itemElements[i]).attr(sortableConfig.childTarget)) {
+                var childElement = angular.element(itemElements[i]).attr(sortableConfig.childTarget);
+                if (angular.element(itemElements[i]).children(childElement)) {
+                  return i;
+                }
+              } else if (angular.element(itemElements[i]).hasClass(sortableConfig.placeHolderClass)) {
                 return i;
               }
             }
@@ -1148,48 +1154,5 @@
         }
       };
     }]);
-
-}());
-
-
-(function () {
-
-  'use strict';
-  var mainModule = angular.module('as.sortable');
-
-  /**
-   * Controller for Unsorted.
-   * @param $scope - the non-sortable scope.
-   */
-  mainModule.controller('as.sortable.unsortedController', ['$scope', function ($scope) {
-
-    this.scope = $scope;
-
-    $scope.modelValue = null; // non-sortable list.
-    $scope.type = 'unsorted';
-    $scope.options = {};
-    $scope.isDisabled = true;
-
-  }]);
-
-  /**
-   * non-sortable directive - defines callbacks.
-   * Sets modelValue, callbacks, element in scope.
-   */
-  mainModule.directive('asUnsorted',
-    function () {
-      return {
-        restrict: 'A',
-        scope: true,
-        controller: 'as.sortable.unsortedController',
-        link: function (scope, element, attrs) {
-
-          //set the element in scope to be accessed by its sub scope.
-          scope.element = element;
-          element.data('_scope',scope);
-
-        }
-      };
-    });
 
 }());
